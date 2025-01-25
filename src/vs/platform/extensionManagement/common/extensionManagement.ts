@@ -328,7 +328,7 @@ export interface ISearchPrefferedResults {
 }
 
 export interface IExtensionsControlManifest {
-	readonly malicious: IExtensionIdentifier[];
+	readonly malicious: ReadonlyArray<IExtensionIdentifier | string>;
 	readonly deprecated: IStringDictionary<IDeprecationInfo>;
 	readonly search: ISearchPrefferedResults[];
 	readonly extensionsEnabledWithPreRelease?: string[];
@@ -628,11 +628,14 @@ export interface IExtensionTipsService {
 	getOtherExecutableBasedTips(): Promise<IExecutableBasedExtensionTip[]>;
 }
 
+export type AllowedExtensionsConfigValueType = IStringDictionary<boolean | string | string[]>;
+
 export const IAllowedExtensionsService = createDecorator<IAllowedExtensionsService>('IAllowedExtensionsService');
 export interface IAllowedExtensionsService {
 	readonly _serviceBrand: undefined;
 
-	readonly onDidChangeAllowedExtensions: Event<void>;
+	readonly allowedExtensionsConfigValue: AllowedExtensionsConfigValueType | undefined;
+	readonly onDidChangeAllowedExtensionsConfigValue: Event<void>;
 
 	isAllowed(extension: IGalleryExtension | IExtension): true | IMarkdownString;
 	isAllowed(extension: { id: string; publisherDisplayName: string | undefined; version?: string; prerelease?: boolean; targetPlatform?: TargetPlatform }): true | IMarkdownString;
