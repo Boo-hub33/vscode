@@ -30,10 +30,11 @@ import { IContextKeyService } from '../../../../platform/contextkey/common/conte
 import { getWindowById } from '../../../../base/browser/dom.js';
 import { CodeWindow } from '../../../../base/browser/window.js';
 import { IDecorationsService } from '../../../services/decorations/common/decorations.js';
+import { IAccessibilityService } from '../../../../platform/accessibility/common/accessibility.js';
 
 const enum WindowSettingNames {
 	titleSeparator = 'window.titleSeparator',
-	title = 'window.title'
+	title = 'window.title',
 }
 
 export const defaultWindowTitle = (() => {
@@ -98,7 +99,8 @@ export class WindowTitle extends Disposable {
 		@IUserDataProfileService private readonly userDataProfileService: IUserDataProfileService,
 		@IProductService private readonly productService: IProductService,
 		@IViewsService private readonly viewsService: IViewsService,
-		@IDecorationsService private readonly decorationsService: IDecorationsService
+		@IDecorationsService private readonly decorationsService: IDecorationsService,
+		@IAccessibilityService private readonly accessibilityService: IAccessibilityService
 	) {
 		super();
 
@@ -125,6 +127,12 @@ export class WindowTitle extends Disposable {
 		}));
 		this._register(this.contextKeyService.onDidChangeContext(e => {
 			if (e.affectsSome(this.variables)) {
+				this.titleUpdater.schedule();
+			}
+		}));
+		this._register(this.accessibilityService.onDidChangeScreenReaderOptimized(() => {
+			if (this.accessibilityService.isScreenReaderOptimized() && !this.titleIncludesEditorState
+				|| !this.accessibilityService.isScreenReaderOptimized() && this.titleIncludesEditorState) {
 				this.titleUpdater.schedule();
 			}
 		}));
@@ -372,6 +380,10 @@ export class WindowTitle extends Disposable {
 			titleTemplate = defaultWindowTitle;
 		}
 
+		if (!this.titleIncludesEditorState && this.accessibilityService.isScreenReaderOptimized() && this.configurationService.getValue('accessibility.windowTitleOptimized')) {
+			titleTemplate += '${separator}${activeEditorState}';
+		}
+
 		let separator = this.configurationService.getValue<string>(WindowSettingNames.titleSeparator);
 		if (typeof separator !== 'string') {
 			separator = defaultWindowTitleSeparator;
@@ -401,6 +413,11 @@ export class WindowTitle extends Disposable {
 	}
 
 	isCustomTitleFormat(): boolean {
+		if (this.accessibilityService.isScreenReaderOptimized()) {
+			// We add activeEditorState by default when screen reader optimized,
+			// make sure that gets applied
+			return true;
+		}
 		const title = this.configurationService.inspect<string>(WindowSettingNames.title);
 		const titleSeparator = this.configurationService.inspect<string>(WindowSettingNames.titleSeparator);
 
