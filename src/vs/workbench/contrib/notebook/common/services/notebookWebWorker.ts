@@ -6,7 +6,7 @@ import { IDiffChange, ISequence, LcsDiff } from '../../../../../base/common/diff
 import { doHash, hash, numberHash } from '../../../../../base/common/hash.js';
 import { IDisposable } from '../../../../../base/common/lifecycle.js';
 import { URI } from '../../../../../base/common/uri.js';
-import { IRequestHandler, IWorkerServer } from '../../../../../base/common/worker/simpleWorker.js';
+import { IWebWorkerServerRequestHandler } from '../../../../../base/common/worker/webWorker.js';
 import { PieceTreeTextBufferBuilder } from '../../../../../editor/common/model/pieceTreeTextBuffer/pieceTreeTextBufferBuilder.js';
 import { CellKind, IMainCellDto, INotebookDiffResult, IOutputDto, NotebookCellInternalMetadata, NotebookCellMetadata, NotebookCellsChangedEventDto, NotebookCellsChangeType, NotebookCellTextModelSplice, NotebookDocumentMetadata, TransientDocumentMetadata } from '../notebookCommon.js';
 import { Range } from '../../../../../editor/common/core/range.js';
@@ -66,7 +66,7 @@ class MirrorCell {
 		hashValue = doHash(this.getValue(), hashValue);
 		hashValue = doHash(this.metadata, hashValue);
 		// For purpose of diffing only cellId matters, rest do not
-		hashValue = doHash(this.internalMetadata?.cellId || '', hashValue);
+		hashValue = doHash(this.internalMetadata?.internalId || '', hashValue);
 		for (const op of this.outputs) {
 			hashValue = doHash(op.metadata, hashValue);
 			for (const output of op.outputs) {
@@ -162,9 +162,9 @@ class CellSequence implements ISequence {
 	static createWithCellId(cells: MirrorCell[], includeCellContents?: boolean) {
 		const hashValue = cells.map((c) => {
 			if (includeCellContents) {
-				return `${doHash(c.internalMetadata?.cellId, numberHash(104579, 0))}#${c.getComparisonValue()}`;
+				return `${doHash(c.internalMetadata?.internalId, numberHash(104579, 0))}#${c.getComparisonValue()}`;
 			} else {
-				return `${doHash(c.internalMetadata?.cellId, numberHash(104579, 0))}}`;
+				return `${doHash(c.internalMetadata?.internalId, numberHash(104579, 0))}}`;
 			}
 		});
 		return new CellSequence(hashValue);
@@ -177,7 +177,7 @@ class CellSequence implements ISequence {
 	}
 }
 
-export class NotebookEditorSimpleWorker implements IRequestHandler, IDisposable {
+export class NotebookWorker implements IWebWorkerServerRequestHandler, IDisposable {
 	_requestHandlerBrand: any;
 
 	private _models: { [uri: string]: MirrorNotebookDocument };
@@ -418,8 +418,8 @@ export class NotebookEditorSimpleWorker implements IRequestHandler, IDisposable 
 	}
 
 	canComputeDiffWithCellInternalIds(original: MirrorNotebookDocument, modified: MirrorNotebookDocument): boolean {
-		const originalCellIndexIds = original.cells.map((cell, index) => ({ index, id: (cell.internalMetadata?.cellId || '') as string }));
-		const modifiedCellIndexIds = modified.cells.map((cell, index) => ({ index, id: (cell.internalMetadata?.cellId || '') as string }));
+		const originalCellIndexIds = original.cells.map((cell, index) => ({ index, id: (cell.internalMetadata?.internalId || '') as string }));
+		const modifiedCellIndexIds = modified.cells.map((cell, index) => ({ index, id: (cell.internalMetadata?.internalId || '') as string }));
 		// If we have a cell without an id, do not use metadata.id for diffing.
 		if (originalCellIndexIds.some(c => !c.id) || modifiedCellIndexIds.some(c => !c.id)) {
 			return false;
@@ -445,35 +445,35 @@ export class NotebookEditorSimpleWorker implements IRequestHandler, IDisposable 
 		// Internally we use internalMetadata.cellId for diffing, hence update the internalMetadata.cellId
 		original.cells.map((cell, index) => {
 			cell.internalMetadata = cell.internalMetadata || {};
-			cell.internalMetadata.cellId = cell.metadata?.id as string || '';
+			cell.internalMetadata.internalId = cell.metadata?.id as string || '';
 		});
 		modified.cells.map((cell, index) => {
 			cell.internalMetadata = cell.internalMetadata || {};
-			cell.internalMetadata.cellId = cell.metadata?.id as string || '';
+			cell.internalMetadata.internalId = cell.metadata?.id as string || '';
 		});
 		return true;
 	}
 
 
 	isOriginalCellMatchedWithModifiedCell(originalCell: MirrorCell) {
-		return (originalCell.internalMetadata?.cellId as string || '').startsWith(PREFIX_FOR_UNMATCHED_ORIGINAL_CELLS);
+		return (originalCell.internalMetadata?.internalId as string || '').startsWith(PREFIX_FOR_UNMATCHED_ORIGINAL_CELLS);
 	}
 	updateCellIdsBasedOnMappings(mappings: { modified: number; original: number }[], originalCells: MirrorCell[], modifiedCells: MirrorCell[]): boolean {
 		const uuids = new Map<number, string>();
 		originalCells.map((cell, index) => {
-			cell.internalMetadata = cell.internalMetadata || { cellId: '' };
-			cell.internalMetadata.cellId = `${PREFIX_FOR_UNMATCHED_ORIGINAL_CELLS}${generateUuid()}`;
+			cell.internalMetadata = cell.internalMetadata || { internalId: '' };
+			cell.internalMetadata.internalId = `${PREFIX_FOR_UNMATCHED_ORIGINAL_CELLS}${generateUuid()}`;
 			const found = mappings.find(r => r.original === index);
 			if (found) {
 				// Do not use the indexes as ids.
 				// If we do, then the hashes will be very similar except for last digit.
-				cell.internalMetadata.cellId = generateUuid();
-				uuids.set(found.modified, cell.internalMetadata.cellId as string);
+				cell.internalMetadata.internalId = generateUuid();
+				uuids.set(found.modified, cell.internalMetadata.internalId as string);
 			}
 		});
 		modifiedCells.map((cell, index) => {
-			cell.internalMetadata = cell.internalMetadata || { cellId: '' };
-			cell.internalMetadata.cellId = uuids.get(index) ?? generateUuid();
+			cell.internalMetadata = cell.internalMetadata || { internalId: '' };
+			cell.internalMetadata.internalId = uuids.get(index) ?? generateUuid();
 		});
 		return true;
 	}
@@ -521,12 +521,8 @@ export class NotebookEditorSimpleWorker implements IRequestHandler, IDisposable 
 	}
 }
 
-/**
- * Defines the worker entry point. Must be exported and named `create`.
- * @skipMangle
- */
-export function create(workerServer: IWorkerServer): IRequestHandler {
-	return new NotebookEditorSimpleWorker();
+export function create(): IWebWorkerServerRequestHandler {
+	return new NotebookWorker();
 }
 
 export type CellDiffInfo = {

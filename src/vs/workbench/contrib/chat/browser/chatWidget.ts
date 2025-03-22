@@ -355,7 +355,7 @@ export class ChatWidget extends Disposable implements IChatWidget {
 			this.renderChatEditingSessionState();
 		}));
 
-		if (this._location.location === ChatAgentLocation.EditingSession || this.chatService.unifiedViewEnabled) {
+		if (this._location.location === ChatAgentLocation.EditingSession || (this.chatService.unifiedViewEnabled && this._location.location !== ChatAgentLocation.Editor)) {
 			let currentEditSession: IChatEditingSession | undefined = undefined;
 			this._register(this.onDidChangeViewModel(async () => {
 				const sessionId = this._viewModel?.sessionId;
@@ -540,6 +540,11 @@ export class ChatWidget extends Disposable implements IChatWidget {
 
 	focusInput(): void {
 		this.inputPart.focus();
+
+		// Sometimes focusing the input part is not possible,
+		// but we'd like to be the last focused chat widget,
+		// so we emit an optimistic onDidFocus event nonetheless.
+		this._onDidFocus.fire();
 	}
 
 	hasInputFocus(): boolean {
@@ -745,6 +750,7 @@ export class ChatWidget extends Disposable implements IChatWidget {
 					location: this.location,
 					userSelectedModelId: this.input.currentLanguageModel,
 					hasInstructionAttachments: this.input.hasInstructionAttachments,
+					mode: this.input.currentMode,
 				};
 				this.chatService.resendRequest(request, options).catch(e => this.logService.error('FAILED to rerun request', e));
 			}

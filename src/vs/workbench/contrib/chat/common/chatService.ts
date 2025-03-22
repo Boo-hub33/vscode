@@ -169,6 +169,7 @@ export interface IChatAgentVulnerabilityDetails {
 export interface IChatResponseCodeblockUriPart {
 	kind: 'codeblockUri';
 	uri: URI;
+	isEdit?: boolean;
 }
 
 export interface IChatAgentMarkdownContentWithVulnerability {
@@ -217,9 +218,14 @@ export interface IChatTerminalToolInvocationData {
 	language: string;
 }
 
+export interface IChatToolInputInvocationData {
+	kind: 'input';
+	rawInput: any;
+}
+
 export interface IChatToolInvocation {
 	presentation: IPreparedToolInvocation['presentation'];
-	toolSpecificData?: IChatTerminalToolInvocationData;
+	toolSpecificData?: IChatTerminalToolInvocationData | IChatToolInputInvocationData;
 	/** Presence of this property says that confirmation is required */
 	confirmationMessages?: IToolConfirmationMessages;
 	confirmed: DeferredPromise<boolean>;
@@ -228,6 +234,8 @@ export interface IChatToolInvocation {
 	invocationMessage: string | IMarkdownString;
 	pastTenseMessage: string | IMarkdownString | undefined;
 	resultDetails: IToolResult['toolResultDetails'];
+	readonly toolId: string;
+	readonly toolCallId: string;
 
 	isCompletePromise: Promise<void>;
 	isComplete: boolean;
@@ -240,12 +248,13 @@ export interface IChatToolInvocation {
  */
 export interface IChatToolInvocationSerialized {
 	presentation: IPreparedToolInvocation['presentation'];
-	toolSpecificData?: IChatTerminalToolInvocationData;
+	toolSpecificData?: IChatTerminalToolInvocationData | IChatToolInputInvocationData;
 	invocationMessage: string | IMarkdownString;
 	pastTenseMessage: string | IMarkdownString | undefined;
 	resultDetails: IToolResult['toolResultDetails'];
 	isConfirmed: boolean | undefined;
 	isComplete: boolean;
+	toolCallId: string;
 	kind: 'toolInvocationSerialized';
 }
 

@@ -34,6 +34,7 @@ import { McpContextKeys } from '../common/mcpContextKeys.js';
 import { IMcpRegistry } from '../common/mcpRegistryTypes.js';
 import { IMcpServer, IMcpService, LazyCollectionState, McpConnectionState, McpServerToolsState } from '../common/mcpTypes.js';
 import { McpAddConfigurationCommand } from './mcpCommandsAddConfiguration.js';
+import { McpUrlHandler } from './mcpUrlHandler.js';
 
 // acroynms do not get localized
 const category: ILocalizedString = {
@@ -71,7 +72,7 @@ export class ListMcpServerCommand extends Action2 {
 
 		const store = new DisposableStore();
 		const pick = quickInput.createQuickPick<ItemType>({ useSeparators: true });
-		pick.title = localize('mcp.selectServer', 'Select an MCP Server');
+		pick.placeholder = localize('mcp.selectServer', 'Select an MCP Server');
 
 		store.add(pick);
 		store.add(autorun(reader => {
@@ -468,6 +469,26 @@ export class ShowOutput extends Action2 {
 	}
 }
 
+export class RestartServer extends Action2 {
+	static readonly ID = 'workbench.mcp.restartServer';
+
+	constructor() {
+		super({
+			id: RestartServer.ID,
+			title: localize2('mcp.command.restartServer', "Restart Server"),
+			category,
+			f1: false,
+		});
+	}
+
+	async run(accessor: ServicesAccessor, serverId: string) {
+		const s = accessor.get(IMcpService).servers.get().find(s => s.definition.id === serverId);
+		s?.showOutput();
+		await s?.stop();
+		await s?.start();
+	}
+}
+
 export class StartServer extends Action2 {
 	static readonly ID = 'workbench.mcp.startServer';
 
@@ -482,7 +503,6 @@ export class StartServer extends Action2 {
 
 	async run(accessor: ServicesAccessor, serverId: string) {
 		const s = accessor.get(IMcpService).servers.get().find(s => s.definition.id === serverId);
-		await s?.stop();
 		await s?.start();
 	}
 }
@@ -502,5 +522,27 @@ export class StopServer extends Action2 {
 	async run(accessor: ServicesAccessor, serverId: string) {
 		const s = accessor.get(IMcpService).servers.get().find(s => s.definition.id === serverId);
 		await s?.stop();
+	}
+}
+
+export class InstallFromActivation extends Action2 {
+	static readonly ID = 'workbench.mcp.installFromActivation';
+
+	constructor() {
+		super({
+			id: InstallFromActivation.ID,
+			title: localize2('mcp.command.installFromActivation', "Install..."),
+			category,
+			f1: false,
+			menu: {
+				id: MenuId.EditorContent,
+				when: ContextKeyExpr.equals('resourceScheme', McpUrlHandler.scheme)
+			}
+		});
+	}
+
+	async run(accessor: ServicesAccessor, uri: URI) {
+		const addConfigHelper = accessor.get(IInstantiationService).createInstance(McpAddConfigurationCommand, undefined);
+		addConfigHelper.pickForUrlHandler(uri);
 	}
 }
