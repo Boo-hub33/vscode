@@ -1182,6 +1182,11 @@ have to be updated for changes to the rules above, or to support more deeply nes
 	border-color: var(--vscode-focusBorder);
 }
 
+.chat-attached-context-attachment .monaco-icon-label > .monaco-icon-label-container > .monaco-icon-suffix-container > .label-suffix {
+	color: var(--vscode-peekViewTitleDescription-foreground);
+	opacity: 1;
+}
+
 .chat-notification-widget .chat-warning-codicon .codicon-warning,
 .chat-quota-error-widget .codicon-warning {
 	color: var(--vscode-notificationsWarningIcon-foreground) !important; /* Have to override default styles which apply to all lists */
@@ -1947,7 +1952,8 @@ have to be updated for changes to the rules above, or to support more deeply nes
 		box-shadow: none;
 	}
 
-	.interactive-request .header.header-disabled {
+	.interactive-request .header.header-disabled,
+	.request-hover.has-no-actions {
 		display: none !important;
 	}
 	.request-hover {
@@ -1959,26 +1965,26 @@ have to be updated for changes to the rules above, or to support more deeply nes
 		top: -13px;
 		right: 20px;
 		border-radius: 3px;
+		width: 28px;
+		height: 26px;
 	}
 
 	.request-hover .actions-container {
-		width: 26px;
-		height: 26px;
+		width: 22px;
+		height: 22px;
 	}
 
 	.request-hover .actions-container .action-label.codicon-x {
-		width: 26px;
-		height: 26px;
-		padding-top: 4px;
-		padding-left: 5px;
-	}
-
-	.request-hover.has-no-actions {
-		display: none !important;
+		margin-top: 4px;
+		padding: 3px 3px;
 	}
 
 	.interactive-list > .monaco-list > .monaco-scrollable-element > .monaco-list-rows > .monaco-list-row {
 		overflow: visible !important;
+	}
+
+	.interactive-list > .monaco-list > .monaco-scrollable-element > .monaco-list-rows > .monaco-list-row.monaco-list-row.focused.request {
+		outline: none !important;
 	}
 
 	div[data-index="0"] .monaco-tl-contents {
@@ -1991,7 +1997,6 @@ have to be updated for changes to the rules above, or to support more deeply nes
 		}
 	}
 
-
 	.interactive-list > .monaco-list:focus > .monaco-scrollable-element > .monaco-list-rows > .monaco-list-row.focused.request {
 		outline: none !important;
 
@@ -2000,7 +2005,7 @@ have to be updated for changes to the rules above, or to support more deeply nes
 		}
 
 		.request-hover {
-			display: flex !important;
+			display: block !important;
 		}
 
 	}
