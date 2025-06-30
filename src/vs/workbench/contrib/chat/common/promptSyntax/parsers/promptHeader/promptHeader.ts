@@ -3,15 +3,15 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { ChatMode } from '../../../constants.js';
+import { ChatModeKind } from '../../../constants.js';
 import { localize } from '../../../../../../../nls.js';
 import { PromptMetadataWarning } from './diagnostics.js';
 import { assert } from '../../../../../../../base/common/assert.js';
 import { assertDefined } from '../../../../../../../base/common/types.js';
 import { PromptToolsMetadata, PromptModeMetadata } from './metadata/index.js';
 import { HeaderBase, IHeaderMetadata, type TDehydrated } from './headerBase.js';
-import { PromptsType } from '../../../../../../../platform/prompts/common/prompts.js';
-import { FrontMatterRecord } from '../../../../../../../editor/common/codecs/frontMatterCodec/tokens/index.js';
+import { PromptsType } from '../../promptTypes.js';
+import { FrontMatterRecord } from '../../codecs/base/frontMatterCodec/tokens/index.js';
 
 /**
  * Metadata utility object for prompt files.
@@ -86,7 +86,7 @@ export class PromptHeader extends HeaderBase<IPromptMetadata> {
 
 		// when mode is set, valid, and tools are present,
 		// the only valid value for the mode is 'agent'
-		return (mode.value === ChatMode.Agent);
+		return (mode.value === ChatModeKind.Agent);
 	}
 
 	/**
@@ -110,7 +110,7 @@ export class PromptHeader extends HeaderBase<IPromptMetadata> {
 			'Mode metadata must have been present.',
 		);
 		assert(
-			mode.value !== ChatMode.Agent,
+			mode.value !== ChatModeKind.Agent,
 			'Mode metadata must not be agent mode.',
 		);
 
@@ -121,7 +121,7 @@ export class PromptHeader extends HeaderBase<IPromptMetadata> {
 					'prompt.header.metadata.mode.diagnostics.incompatible-with-tools',
 					"Record '{0}' is implied to have the '{1}' value if '{2}' record is present so the specified value will be ignored.",
 					mode.recordName,
-					ChatMode.Agent,
+					ChatModeKind.Agent,
 					tools.recordName,
 				),
 			),

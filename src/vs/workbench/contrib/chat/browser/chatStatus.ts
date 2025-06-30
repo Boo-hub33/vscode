@@ -11,7 +11,7 @@ import { localize } from '../../../../nls.js';
 import { IWorkbenchContribution } from '../../../common/contributions.js';
 import { IStatusbarEntry, IStatusbarEntryAccessor, IStatusbarService, ShowTooltipCommand, StatusbarAlignment, StatusbarEntryKind } from '../../../services/statusbar/browser/statusbar.js';
 import { $, addDisposableListener, append, clearNode, EventHelper, EventType } from '../../../../base/browser/dom.js';
-import { ChatEntitlement, ChatEntitlementService, IChatEntitlementService, IQuotaSnapshot } from '../common/chatEntitlementService.js';
+import { ChatEntitlement, ChatEntitlementService, IChatEntitlementService, IQuotaSnapshot, isProUser } from '../common/chatEntitlementService.js';
 import { CancellationToken } from '../../../../base/common/cancellation.js';
 import { defaultButtonStyles, defaultCheckboxStyles } from '../../../../platform/theme/browser/defaultStyles.js';
 import { Checkbox } from '../../../../base/browser/ui/toggle/toggle.js';
@@ -171,12 +171,28 @@ export class ChatStatusBarEntry extends Disposable implements IWorkbenchContribu
 		let ariaLabel = localize('chatStatus', "Copilot Status");
 		let kind: StatusbarEntryKind | undefined;
 
-		if (!isNewUser(this.chatEntitlementService)) {
+		if (isNewUser(this.chatEntitlementService)) {
+			const entitlement = this.chatEntitlementService.entitlement;
+
+			// Finish Setup
+			if (
+				this.chatEntitlementService.sentiment.later ||	// user skipped setup
+				entitlement === ChatEntitlement.Available ||	// user is entitled
+				isProUser(entitlement) ||						// user is already pro
+				entitlement === ChatEntitlement.Free			// user is already free
+			) {
+				const finishSetup = localize('copilotLaterStatus', "Finish Setup");
+
+				text = `$(copilot) ${finishSetup}`;
+				ariaLabel = finishSetup;
+				kind = 'prominent';
+			}
+		} else {
 			const chatQuotaExceeded = this.chatEntitlementService.quotas.chat?.percentRemaining === 0;
 			const completionsQuotaExceeded = this.chatEntitlementService.quotas.completions?.percentRemaining === 0;
 
 			// Disabled
-			if (this.chatEntitlementService.sentiment.disabled) {
+			if (this.chatEntitlementService.sentiment.disabled || this.chatEntitlementService.sentiment.untrusted) {
 				text = `$(copilot-unavailable)`;
 				ariaLabel = localize('copilotDisabledStatus', "Copilot Disabled");
 			}
@@ -209,7 +225,7 @@ export class ChatStatusBarEntry extends Disposable implements IWorkbenchContribu
 			// Completions Disabled
 			else if (this.editorService.activeTextEditorLanguageId && !isCompletionsEnabled(this.configurationService, this.editorService.activeTextEditorLanguageId)) {
 				text = `$(copilot-unavailable)`;
-				ariaLabel = localize('completionsDisabledStatus', "Code completions Disabled");
+				ariaLabel = localize('completionsDisabledStatus', "Code completions disabled");
 			}
 		}
 
@@ -239,7 +255,7 @@ function isNewUser(chatEntitlementService: IChatEntitlementService): boolean {
 
 function canUseCopilot(chatEntitlementService: IChatEntitlementService): boolean {
 	const newUser = isNewUser(chatEntitlementService);
-	const disabled = chatEntitlementService.sentiment.disabled;
+	const disabled = chatEntitlementService.sentiment.disabled || chatEntitlementService.sentiment.untrusted;
 	const signedOut = chatEntitlementService.entitlement === ChatEntitlement.Unknown;
 	const free = chatEntitlementService.entitlement === ChatEntitlement.Free;
 	const allFreeQuotaReached = free && chatEntitlementService.quotas.chat?.percentRemaining === 0 && chatEntitlementService.quotas.completions?.percentRemaining === 0;
@@ -394,7 +410,7 @@ class ChatStatusDashboard extends Disposable {
 		// Settings
 		{
 			const chatSentiment = this.chatEntitlementService.sentiment;
-			addSeparator(localize('settingsTitle', "Settings"), chatSentiment.installed && !chatSentiment.disabled ? toAction({
+			addSeparator(localize('settingsTitle', "Settings"), chatSentiment.installed && !chatSentiment.disabled && !chatSentiment.untrusted ? toAction({
 				id: 'workbench.action.openChatSettings',
 				label: localize('settingsLabel', "Settings"),
 				tooltip: localize('settingsTooltip', "Open Settings"),
@@ -408,7 +424,7 @@ class ChatStatusDashboard extends Disposable {
 		// New to Copilot / Signed out
 		{
 			const newUser = isNewUser(this.chatEntitlementService);
-			const disabled = this.chatEntitlementService.sentiment.disabled;
+			const disabled = this.chatEntitlementService.sentiment.disabled || this.chatEntitlementService.sentiment.untrusted;
 			const signedOut = this.chatEntitlementService.entitlement === ChatEntitlement.Unknown;
 			if (newUser || signedOut || disabled) {
 				addSeparator();

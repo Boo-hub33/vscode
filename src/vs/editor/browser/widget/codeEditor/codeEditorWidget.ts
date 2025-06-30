@@ -60,6 +60,8 @@ import { INotificationService, Severity } from '../../../../platform/notificatio
 import { editorErrorForeground, editorHintForeground, editorInfoForeground, editorWarningForeground } from '../../../../platform/theme/common/colorRegistry.js';
 import { IThemeService, registerThemingParticipant } from '../../../../platform/theme/common/themeService.js';
 import { MenuId } from '../../../../platform/actions/common/actions.js';
+import { TextModelEditReason, EditReasons } from '../../../common/textModelEditReason.js';
+import { TextEdit } from '../../../common/core/edits/textEdit.js';
 
 export class CodeEditorWidget extends Disposable implements editorBrowser.ICodeEditor {
 
@@ -1239,7 +1241,11 @@ export class CodeEditorWidget extends Disposable implements editorBrowser.ICodeE
 		return true;
 	}
 
-	public executeEdits(source: string | null | undefined, edits: IIdentifiedSingleEditOperation[], endCursorState?: ICursorStateComputer | Selection[]): boolean {
+	public edit(edit: TextEdit, reason: TextModelEditReason): boolean {
+		return this.executeEdits(reason, edit.replacements.map<IIdentifiedSingleEditOperation>(e => ({ range: e.range, text: e.text })), undefined);
+	}
+
+	public executeEdits(source: string | null | undefined | TextModelEditReason, edits: IIdentifiedSingleEditOperation[], endCursorState?: ICursorStateComputer | Selection[]): boolean {
 		if (!this._modelData) {
 			return false;
 		}
@@ -1257,9 +1263,19 @@ export class CodeEditorWidget extends Disposable implements editorBrowser.ICodeE
 			cursorStateComputer = endCursorState;
 		}
 
-		this._onBeforeExecuteEdit.fire({ source: source ?? undefined });
+		let sourceStr: string | undefined | null;
+		let reason: TextModelEditReason;
 
-		this._modelData.viewModel.executeEdits(source, edits, cursorStateComputer);
+		if (source instanceof TextModelEditReason) {
+			reason = source;
+			sourceStr = source.metadata.source;
+		} else {
+			reason = EditReasons.unknown({ name: sourceStr });
+			sourceStr = source;
+		}
+
+		this._onBeforeExecuteEdit.fire({ source: sourceStr ?? undefined });
+		this._modelData.viewModel.executeEdits(sourceStr, edits, cursorStateComputer, reason);
 		return true;
 	}
 
