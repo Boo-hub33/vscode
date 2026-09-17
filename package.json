@@ -102,7 +102,7 @@
     "reauth-feed": "artifacts-npm-credprovider --force"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.82.0",
+    "@anthropic-ai/sdk": "^0.126.0",
     "@devcontainers/cli": "0.88.0",
     "@github/copilot": "1.0.84-9",
     "@github/copilot-sdk": "1.0.14",
@@ -252,7 +252,7 @@
     "istanbul-lib-report": "^3.0.0",
     "istanbul-lib-source-maps": "^4.0.1",
     "istanbul-reports": "^3.1.5",
-    "js-yaml": "^4.2.0",
+    "js-yaml": "^5.4.2",
     "lazy.js": "^0.4.2",
     "merge-options": "^1.0.1",
     "mime": "^1.4.1",
