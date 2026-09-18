@@ -97,7 +97,7 @@
     "reauth-feed": "artifacts-npm-credprovider --force"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.82.0",
+    "@anthropic-ai/sdk": "^0.127.0",
     "@devcontainers/cli": "0.88.0",
     "@github/copilot-sdk": "1.0.15-unstable.35393089353.gfc44743",
     "@microsoft/1ds-core-js": "^3.2.13",
